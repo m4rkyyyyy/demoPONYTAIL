@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="rounded-lg bg-white p-6 shadow">
+  <h1 class="text-lg font-bold">Delete {{ trade.symbol }}?</h1>
+  <p class="mt-2 text-sm text-slate-600">
+    {{ trade.direction }} {{ trade.quantity }} entered {{ trade.entry_date|date:"Y-m-d H:i" }}.
+    This cannot be undone.
+  </p>
+  <form method="post" class="mt-6 flex gap-3">
+    {% csrf_token %}
+    <button class="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500">Delete</button>
+    <a href="{% url 'trade_list' %}" class="text-sm text-slate-500 hover:underline">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% load journal_extras %}
+{% block title %}Dashboard &middot; TradePulse{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+{% if not has_accounts %}
+  <div class="mb-8 rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 px-6 py-10 text-center">
+    <i data-lucide="wallet" class="mx-auto h-10 w-10 text-slate-600"></i>
+    <h1 class="mt-4 text-xl font-semibold text-white">Welcome to TradePulse</h1>
+    <p class="mx-auto mt-2 max-w-md text-sm text-slate-400">
+      Start by creating the broker or exchange you trade through. Every trade you log
+      is attached to an account, and accounts keep your stats honest.
+    </p>
+    <a href="{% url 'account_create' %}"
+       class="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500">
+      <i data-lucide="plus" class="h-4 w-4"></i> Create your first account
+    </a>
+  </div>
+{% else %}
+
+  {# ---------------- metrics bar ---------------- #}
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <p class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <i data-lucide="check-check" class="h-3.5 w-3.5"></i> Closed trades
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-white">{{ stats.closed_count }}</p>
+      <p class="mt-1 text-xs text-slate-500">{{ stats.open_count }} still open</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <p class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <i data-lucide="target" class="h-3.5 w-3.5"></i> Win rate
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-white">{{ stats.win_rate|percent:1 }}</p>
+      <p class="mt-1 text-xs text-slate-500">{{ stats.win_count }}W / {{ stats.loss_count }}L</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <p class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <i data-lucide="banknote" class="h-3.5 w-3.5"></i> Total net P&amp;L
+      </p>
+      <p class="mt-2 text-2xl font-semibold {{ stats.net_pnl|pnl_class }}">{{ stats.net_pnl|signed_money }}</p>
+      <p class="mt-1 text-xs text-slate-500">after {{ stats.total_fees|money }} in fees</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <p class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <i data-lucide="scale" class="h-3.5 w-3.5"></i> Profit factor
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-white">
+        {% if stats.profit_factor %}{{ stats.profit_factor|floatformat:2 }}{% else %}N/A{% endif %}
+      </p>
+      <p class="mt-1 text-xs text-slate-500">
+        {{ stats.gross_wins|money }} won / {{ stats.gross_losses|money }} lost
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <p class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <i data-lucide="sigma" class="h-3.5 w-3.5"></i> Avg R-multiple
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-white">{{ stats.avg_r|r_multiple }}</p>
+      <p class="mt-1 text-xs text-slate-500">avg win {{ stats.avg_win|money }} / avg loss {{ stats.avg_loss|money }}</p>
+    </div>
+  </div>
+
+  {# ---------------- charts ---------------- #}
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 lg:col-span-2">
+      <div class="flex items-baseline justify-between">
+        <h2 class="text-sm font-semibold text-white">Cumulative equity curve</h2>
+        <span class="text-xs text-slate-500">starting balance {{ starting_balance|money }}</span>
+      </div>
+      <div class="mt-4 h-72">
+        <canvas id="equity-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <h2 class="text-sm font-semibold text-white">Wins vs losses</h2>
+      <div class="mt-4 h-56">
+        <canvas id="winloss-chart"></canvas>
+      </div>
+      <dl class="mt-4 space-y-1.5 text-xs text-slate-400">
+        <div class="flex justify-between"><dt>Expectancy / trade</dt><dd class="{{ stats.expectancy|pnl_class }}">{{ stats.expectancy|signed_money }}</dd></div>
+        <div class="flex justify-between"><dt>Best trade</dt><dd class="text-emerald-600">{{ stats.best_trade|signed_money }}</dd></div>
+        <div class="flex justify-between"><dt>Worst trade</dt><dd class="text-rose-600">{{ stats.worst_trade|signed_money }}</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  {# ---------------- accounts ---------------- #}
+  <div class="mt-8">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-white">Accounts</h2>
+      <a href="{% url 'account_create' %}" class="text-xs text-indigo-400 hover:text-indigo-300">+ New account</a>
+    </div>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for account in accounts %}
+        <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <p class="flex items-center gap-2 text-sm font-medium text-white">
+            <i data-lucide="landmark" class="h-4 w-4 text-slate-500"></i>{{ account.name }}
+          </p>
+          <p class="mt-1 text-xs text-slate-500">{{ account.currency }} &middot; opened {{ account.initial_balance|money }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ---------------- open positions ---------------- #}
+  {% if open_trades %}
+    <div class="mt-8">
+      <h2 class="text-sm font-semibold text-white">Open positions</h2>
+      <div class="mt-3 overflow-x-auto rounded-2xl border border-slate-800">
+        <table class="min-w-full divide-y divide-slate-800 text-sm">
+          <thead class="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3 text-left font-medium">Symbol</th>
+              <th class="px-4 py-3 text-left font-medium">Side</th>
+              <th class="px-4 py-3 text-right font-medium">Entry</th>
+              <th class="px-4 py-3 text-right font-medium">Qty</th>
+              <th class="px-4 py-3 text-right font-medium">Stop</th>
+              <th class="px-4 py-3 text-right font-medium">Target</th>
+              <th class="px-4 py-3 text-right font-medium">Risk</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/70 bg-slate-950/40">
+            {% for trade in open_trades %}
+              <tr class="hover:bg-slate-900/40">
+                <td class="px-4 py-3 font-medium text-white">{{ trade.symbol }}</td>
+                <td class="px-4 py-3"><span class="rounded-full px-2 py-0.5 text-xs font-medium {% if trade.direction == 'LONG' %}bg-emerald-500/10 text-emerald-400{% else %}bg-rose-500/10 text-rose-400{% endif %}">{{ trade.direction }}</span></td>
+                <td class="px-4 py-3 text-right text-slate-300">{{ trade.entry_price|money:6 }}</td>
+                <td class="px-4 py-3 text-right text-slate-300">{{ trade.quantity|money:6 }}</td>
+                <td class="px-4 py-3 text-right text-slate-400">{{ trade.stop_loss|money:6 }}</td>
+                <td class="px-4 py-3 text-right text-slate-400">{{ trade.take_profit|money:6 }}</td>
+                <td class="px-4 py-3 text-right text-slate-300">{{ trade.initial_risk|money }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  {# ---------------- recent trades ---------------- #}
+  <div class="mt-8">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-white">Recent trades</h2>
+      <a href="{% url 'trade_list' %}" class="text-xs text-indigo-400 hover:text-indigo-300">View all</a>
+    </div>
+
+    {% if recent_trades %}
+      <div class="mt-3 overflow-x-auto rounded-2xl border border-slate-800">
+        <table class="min-w-full divide-y divide-slate-800 text-sm">
+          <thead class="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3 text-left font-medium">Symbol</th>
+              <th class="px-4 py-3 text-left font-medium">Class</th>
+              <th class="px-4 py-3 text-left font-medium">Side</th>
+              <th class="px-4 py-3 text-left font-medium">Result</th>
+              <th class="px-4 py-3 text-right font-medium">Net P&amp;L</th>
+              <th class="px-4 py-3 text-right font-medium">R</th>
+              <th class="px-4 py-3 text-right font-medium">Return</th>
+              <th class="px-4 py-3 text-right font-medium">Entered</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/70 bg-slate-950/40">
+            {% for trade in recent_trades %}
+              <tr class="hover:bg-slate-900/40">
+                <td class="px-4 py-3 font-medium text-white">{{ trade.symbol }}</td>
+                <td class="px-4 py-3 text-xs text-slate-400">{{ trade.get_asset_class_display }}</td>
+                <td class="px-4 py-3"><span class="rounded-full px-2 py-0.5 text-xs font-medium {% if trade.direction == 'LONG' %}bg-emerald-500/10 text-emerald-400{% else %}bg-rose-500/10 text-rose-400{% endif %}">{{ trade.direction }}</span></td>
+                <td class="px-4 py-3">
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium
+                    {% if trade.result == 'WIN' %}bg-emerald-500/10 text-emerald-400
+                    {% elif trade.result == 'LOSS' %}bg-rose-500/10 text-rose-400
+                    {% elif trade.result == 'BREAKEVEN' %}bg-slate-500/10 text-slate-400
+                    {% else %}bg-sky-500/10 text-sky-400{% endif %}">
+                    {{ trade.result }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right font-medium {{ trade.net_pnl|pnl_class }}">{{ trade.net_pnl|signed_money }}</td>
+                <td class="px-4 py-3 text-right {{ trade.r_multiple|pnl_class }}">{{ trade.r_multiple|r_multiple }}</td>
+                <td class="px-4 py-3 text-right {{ trade.return_pct|pnl_class }}">{{ trade.return_pct|percent:2 }}</td>
+                <td class="px-4 py-3 text-right text-xs text-slate-500">{{ trade.entry_date|date:"d M Y H:i" }}</td>
+                <td class="px-4 py-3 text-right">
+                  <a href="{% url 'trade_update' trade.pk %}" class="text-xs text-indigo-400 hover:text-indigo-300">Edit</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="mt-3 rounded-2xl border border-dashed border-slate-800 px-6 py-10 text-center">
+        <p class="text-sm text-slate-400">No trades logged yet.</p>
+        <a href="{% url 'trade_create' %}" class="mt-3 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+          <i data-lucide="plus" class="h-4 w-4"></i> Log your first trade
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{{ equity_points|json_script:"equity-data" }}
+{{ win_loss|json_script:"winloss-data" }}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const equity = JSON.parse(document.getElementById('equity-data').textContent);
+  const mix = JSON.parse(document.getElementById('winloss-data').textContent);
+
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.font.family = 'ui-sans-serif, system-ui, sans-serif';
+
+  const line = document.getElementById('equity-chart');
+  if (line) {
+    new Chart(line, {
+      type: 'line',
+      data: {
+        labels: equity.map(function (p) { return p.label; }),
+        datasets: [{
+          label: 'Equity',
+          data: equity.map(function (p) { return p.equity; }),
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99, 102, 241, 0.15)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.25,
+          pointRadius: equity.length > 40 ? 0 : 3,
+          pointBackgroundColor: '#6366f1',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return 'Equity: ' + ctx.parsed.y.toLocaleString(undefined, {
+                  minimumFractionDigits: 2, maximumFractionDigits: 2
+                });
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { maxTicksLimit: 10 } },
+          y: { grid: { color: 'rgba(148,163,184,0.08)' } }
+        }
+      }
+    });
+  }
+
+  const doughnut = document.getElementById('winloss-chart');
+  if (doughnut) {
+    new Chart(doughnut, {
+      type: 'doughnut',
+      data: {
+        labels: ['Wins', 'Losses', 'Breakeven'],
+        datasets: [{
+          data: [mix.wins, mix.losses, mix.breakeven],
+          backgroundColor: ['#10b981', '#f43f5e', '#64748b'],
+          borderColor: '#0f172a',
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } } }
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Sign up &middot; TradePulse{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-sm">
+  <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-8">
+    <div class="flex items-center gap-2 text-lg font-semibold text-white">
+      <i data-lucide="activity" class="h-5 w-5 text-indigo-400"></i> TradePulse
+    </div>
+    <p class="mt-1 text-sm text-slate-500">Start journalling your trades.</p>
+
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+
+      {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-300">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}
+            <p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
+          {% endif %}
+          {% for error in field.errors %}
+            <p class="mt-1 text-xs text-rose-400">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      <button type="submit"
+              class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500">
+        Create account
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-xs text-slate-500">
+      Already have an account?
+      <a href="{% url 'login' %}" class="text-indigo-400 hover:text-indigo-300">Log in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Import trades &middot; TradePulse{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <h1 class="text-xl font-semibold text-white">Import trades from CSV</h1>
+  <p class="mt-1 text-sm text-slate-500">
+    Every row is validated before anything is written. If a single row fails,
+    the whole file is rejected and the offending lines are listed.
+  </p>
+
+  <form method="post" enctype="multipart/form-data"
+        class="mt-6 space-y-5 rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
+    {% csrf_token %}
+    {% include "journal/_form_fields.html" %}
+
+    <div class="flex items-center gap-3 border-t border-slate-800 pt-5">
+      <button type="submit"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500">
+        <i data-lucide="upload" class="h-4 w-4"></i> Validate &amp; import
+      </button>
+      <a href="{% url 'trade_list' %}"
+         class="rounded-lg border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</a>
+    </div>
+  </form>
+
+  <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
+    <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+      <i data-lucide="file-spreadsheet" class="h-4 w-4 text-slate-500"></i> Expected columns
+    </h2>
+
+    <div class="mt-3 space-y-3 text-xs">
+      <div>
+        <p class="font-medium uppercase tracking-wide text-slate-500">Required</p>
+        <div class="mt-1 flex flex-wrap gap-1.5">
+          {% for column in required_columns %}
+            <code class="rounded-md bg-indigo-500/10 px-2 py-1 text-indigo-300">{{ column }}</code>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <p class="font-medium uppercase tracking-wide text-slate-500">Optional</p>
+        <div class="mt-1 flex flex-wrap gap-1.5">
+          {% for column in optional_columns %}
+            <code class="rounded-md bg-slate-800 px-2 py-1 text-slate-400">{{ column }}</code>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <h3 class="mt-6 text-xs font-medium uppercase tracking-wide text-slate-500">Example</h3>
+    <pre class="mt-2 overflow-x-auto rounded-lg bg-slate-950 px-3 py-3 text-xs leading-relaxed text-slate-300">symbol,asset_class,direction,entry_date,entry_price,quantity,status,exit_date,exit_price,stop_loss,fees,tags
+AAPL,STOCKS,LONG,2024-03-01T09:30,187.25,50,CLOSED,2024-03-08T16:00,195.40,182.00,1.25,Breakout|Earnings
+EUR/USD,FOREX,SHORT,2024-03-04,1.0850,1000,CLOSED,2024-03-11,1.0790,1.0900,0.50,Reversal</pre>
+
+    <ul class="mt-4 space-y-1 text-xs text-slate-500">
+      <li>&middot; Dates may be <code class="text-slate-400">YYYY-MM-DD</code> or full ISO timestamps.</li>
+      <li>&middot; Leave <code class="text-slate-400">status</code> blank and it is inferred from the exit fields.</li>
+      <li>&middot; Separate multiple tags with <code class="text-slate-400">|</code>.</li>
+      <li>&middot; <code class="text-slate-400">asset_class</code> and <code class="text-slate-400">direction</code> are case-insensitive.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

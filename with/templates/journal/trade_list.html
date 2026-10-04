@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6 flex items-end justify-between">
+  <h1 class="text-2xl font-bold">Trade log</h1>
+  <div class="flex gap-2">
+    <a href="{% url 'trade_create' %}" class="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">New trade</a>
+    <a href="{% url 'trade_export' %}" class="rounded border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50">Export CSV</a>
+  </div>
+</div>
+
+<form method="get" class="mb-6 grid items-end gap-3 rounded-lg bg-white p-4 shadow sm:grid-cols-5">
+  <div>
+    <label class="mb-1 block text-xs font-medium uppercase text-slate-500">Symbol</label>
+    <input type="text" name="q" value="{{ selected.q }}" placeholder="AAPL, BTC…" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+  </div>
+  <div>
+    <label class="mb-1 block text-xs font-medium uppercase text-slate-500">Status</label>
+    <select name="status" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+      <option value="">All</option>
+      {% for value, label in status_choices %}<option value="{{ value }}" {% if selected.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="mb-1 block text-xs font-medium uppercase text-slate-500">Direction</label>
+    <select name="direction" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+      <option value="">All</option>
+      {% for value, label in direction_choices %}<option value="{{ value }}" {% if selected.direction == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="mb-1 block text-xs font-medium uppercase text-slate-500">Asset class</label>
+    <select name="asset_class" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+      <option value="">All</option>
+      {% for value, label in asset_class_choices %}<option value="{{ value }}" {% if selected.asset_class == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="rounded bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-700">Filter</button>
+</form>
+
+<div class="overflow-x-auto rounded-lg bg-white shadow">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3">Entered</th><th class="px-4 py-3">Symbol</th><th class="px-4 py-3">Class</th>
+        <th class="px-4 py-3">Dir</th><th class="px-4 py-3">Qty</th><th class="px-4 py-3 text-right">Entry</th>
+        <th class="px-4 py-3 text-right">Exit</th><th class="px-4 py-3">Result</th>
+        <th class="px-4 py-3 text-right">Net P&amp;L</th><th class="px-4 py-3 text-right">R</th><th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for trade in trades %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-4 py-2">{{ trade.entry_date|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-2 font-medium">{{ trade.symbol }}</td>
+          <td class="px-4 py-2 text-slate-500">{{ trade.get_asset_class_display }}</td>
+          <td class="px-4 py-2">
+            <span class="rounded px-2 py-0.5 text-xs font-medium {% if trade.direction == 'LONG' %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-800{% endif %}">{{ trade.direction }}</span>
+          </td>
+          <td class="px-4 py-2">{{ trade.quantity|floatformat:"-4" }}</td>
+          <td class="px-4 py-2 text-right">{{ trade.entry_price|floatformat:"-4" }}</td>
+          <td class="px-4 py-2 text-right">{% if trade.exit_price is not None %}{{ trade.exit_price|floatformat:"-4" }}{% else %}&mdash;{% endif %}</td>
+          <td class="px-4 py-2">
+            {% if trade.outcome == 'WIN' %}<span class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">Win</span>
+            {% elif trade.outcome == 'LOSS' %}<span class="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">Loss</span>
+            {% else %}<span class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ trade.get_status_display }}</span>{% endif %}
+          </td>
+          <td class="px-4 py-2 text-right font-medium {% if trade.net_pnl > 0 %}text-emerald-600{% elif trade.net_pnl < 0 %}text-red-600{% endif %}">
+            {% if trade.net_pnl is not None %}{{ trade.net_pnl|floatformat:2 }}{% else %}&mdash;{% endif %}
+          </td>
+          <td class="px-4 py-2 text-right">{% if trade.r_multiple is not None %}{{ trade.r_multiple|floatformat:2 }}R{% else %}&mdash;{% endif %}</td>
+          <td class="whitespace-nowrap px-4 py-2 text-right text-xs">
+            <a class="text-indigo-600 hover:underline" href="{% url 'trade_edit' trade.pk %}">Edit</a>
+            <a class="ml-2 text-red-600 hover:underline" href="{% url 'trade_delete' trade.pk %}">Delete</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="11" class="px-4 py-8 text-center text-slate-400">No trades match these filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+  <nav class="mt-6 flex items-center gap-3 text-sm">
+    <span class="text-slate-500">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_previous %}
+      <a class="rounded border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50" href="?{% for key, value in selected.items %}{% if value %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    {% if page_obj.has_next %}
+      <a class="rounded border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50" href="?{% for key, value in selected.items %}{% if value %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

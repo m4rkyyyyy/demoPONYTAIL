@@ -1,0 +1,25 @@
+{% comment %}
+Renders a ModelForm's fields with consistent Tailwind styling.
+Included by trade_form.html and account_form.html so both look identical.
+{% endcomment %}
+{% if form.non_field_errors %}
+  <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+    {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+  </div>
+{% endif %}
+
+{% for field in form %}
+  <div>
+    <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-300">
+      {{ field.label }}
+      {% if field.field.required %}<span class="text-rose-400">*</span>{% endif %}
+    </label>
+    {{ field }}
+    {% if field.help_text %}
+      <p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>
+    {% endif %}
+    {% for error in field.errors %}
+      <p class="mt-1 text-xs text-rose-400">{{ error }}</p>
+    {% endfor %}
+  </div>
+{% endfor %}

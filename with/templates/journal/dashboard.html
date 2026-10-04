@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6 flex items-end justify-between">
+  <div>
+    <h1 class="text-2xl font-bold">Dashboard</h1>
+    <p class="text-sm text-slate-500">Closed-trade performance for {{ user.username }}</p>
+  </div>
+  <a href="{% url 'trade_create' %}" class="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">New trade</a>
+</div>
+
+<div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  <div class="rounded-lg bg-white p-4 shadow">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Closed trades</p>
+    <p class="mt-1 text-2xl font-bold">{{ closed_count }}</p>
+  </div>
+  <div class="rounded-lg bg-white p-4 shadow">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Win rate</p>
+    <p class="mt-1 text-2xl font-bold">{% if win_rate is not None %}{{ win_rate|floatformat:1 }}%{% else %}N/A{% endif %}</p>
+  </div>
+  <div class="rounded-lg bg-white p-4 shadow">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Total net P&amp;L</p>
+    <p class="mt-1 text-2xl font-bold {% if net_pnl > 0 %}text-emerald-600{% elif net_pnl < 0 %}text-red-600{% endif %}">{{ net_pnl|floatformat:2 }}</p>
+  </div>
+  <div class="rounded-lg bg-white p-4 shadow">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Profit factor</p>
+    <p class="mt-1 text-2xl font-bold">{% if profit_factor is not None %}{{ profit_factor|floatformat:2 }}{% else %}N/A{% endif %}</p>
+  </div>
+  <div class="rounded-lg bg-white p-4 shadow">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Avg R-multiple</p>
+    <p class="mt-1 text-2xl font-bold">{% if avg_r is not None %}{{ avg_r|floatformat:2 }}R{% else %}N/A{% endif %}</p>
+  </div>
+</div>
+
+<div class="mb-8 grid gap-6 lg:grid-cols-3">
+  <div class="rounded-lg bg-white p-6 shadow lg:col-span-2">
+    <h2 class="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Cumulative equity curve</h2>
+    <div class="h-64"><canvas id="equityChart"></canvas></div>
+    {% if not equity_curve %}
+      <p class="mt-3 text-center text-sm text-slate-400">Close a trade to plot your equity curve.</p>
+    {% endif %}
+  </div>
+  <div class="rounded-lg bg-white p-6 shadow">
+    <h2 class="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Wins vs losses</h2>
+    <div class="h-64"><canvas id="outcomeChart"></canvas></div>
+  </div>
+</div>
+
+<h2 class="mb-3 text-lg font-bold">Recent trades</h2>
+<div class="overflow-x-auto rounded-lg bg-white shadow">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3">Entered</th><th class="px-4 py-3">Symbol</th><th class="px-4 py-3">Direction</th>
+        <th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Net P&amp;L</th><th class="px-4 py-3 text-right">R</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for trade in recent_trades %}
+        <tr class="border-t border-slate-100">
+          <td class="px-4 py-2">{{ trade.entry_date|date:"Y-m-d H:i" }}</td>
+          <td class="px-4 py-2 font-medium">{{ trade.symbol }}</td>
+          <td class="px-4 py-2">
+            <span class="rounded px-2 py-0.5 text-xs font-medium {% if trade.direction == 'LONG' %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-800{% endif %}">{{ trade.direction }}</span>
+          </td>
+          <td class="px-4 py-2">
+            {% if trade.outcome == 'WIN' %}<span class="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">Win</span>
+            {% elif trade.outcome == 'LOSS' %}<span class="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">Loss</span>
+            {% else %}<span class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ trade.get_status_display }}</span>{% endif %}
+          </td>
+          <td class="px-4 py-2 text-right font-medium {% if trade.net_pnl > 0 %}text-emerald-600{% elif trade.net_pnl < 0 %}text-red-600{% endif %}">
+            {% if trade.net_pnl is not None %}{{ trade.net_pnl|floatformat:2 }}{% else %}&mdash;{% endif %}
+          </td>
+          <td class="px-4 py-2 text-right">{% if trade.r_multiple is not None %}{{ trade.r_multiple|floatformat:2 }}R{% else %}&mdash;{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">No trades yet — log your first one.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-4"><a class="text-sm text-indigo-600 hover:underline" href="{% url 'trade_list' %}">View the full trade log →</a></p>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{{ equity_curve|json_script:"equity-data" }}
+<script>
+  const equity = JSON.parse(document.getElementById('equity-data').textContent);
+  new Chart(document.getElementById('equityChart'), {
+    type: 'line',
+    data: {
+      labels: equity.map(point => point.date),
+      datasets: [{
+        label: 'Cumulative net P&L',
+        data: equity.map(point => point.equity),
+        borderColor: '#059669', backgroundColor: 'rgba(5,150,105,.12)', fill: true, tension: .25, pointRadius: 3
+      }]
+    },
+    options: {plugins: {legend: {display: false}}, scales: {y: {ticks: {callback: v => v.toFixed(0)}}}}
+  });
+  new Chart(document.getElementById('outcomeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Wins', 'Losses', 'Breakeven'],
+      datasets: [{
+        data: [{{ win_count }}, {{ loss_count }}, {{ breakeven }}],
+        backgroundColor: ['#10b981', '#ef4444', '#cbd5e1']
+      }]
+    },
+    options: {plugins: {legend: {position: 'bottom'}}}
+  });
+</script>
+{% endblock %}

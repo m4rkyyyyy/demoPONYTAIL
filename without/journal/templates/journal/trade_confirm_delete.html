@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load journal_extras %}
+{% block title %}Delete trade &middot; TradePulse{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl rounded-2xl border border-rose-500/30 bg-slate-900/40 p-8">
+  <div class="flex items-center gap-3">
+    <i data-lucide="triangle-alert" class="h-6 w-6 text-rose-400"></i>
+    <h1 class="text-lg font-semibold text-white">Delete this trade?</h1>
+  </div>
+
+  <p class="mt-4 text-sm text-slate-400">
+    <span class="font-medium text-white">{{ trade.symbol }}</span>
+    &mdash; {{ trade.direction }} {{ trade.quantity|money:6 }} @ {{ trade.entry_price|money:6 }}
+    {% if trade.is_closed %}
+      , net <span class="{{ trade.net_pnl|pnl_class }}">{{ trade.net_pnl|signed_money }}</span>
+    {% endif %}
+  </p>
+  <p class="mt-2 text-sm text-slate-500">This cannot be undone.</p>
+
+  <form method="post" class="mt-6 flex items-center gap-3">
+    {% csrf_token %}
+    <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500">
+      Delete trade
+    </button>
+    <a href="{% url 'trade_list' %}"
+       class="rounded-lg border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</a>
+  </form>
+</div>
+{% endblock %}

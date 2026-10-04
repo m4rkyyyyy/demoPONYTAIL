@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Log in · TradePulse{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-sm rounded-lg bg-white p-6 shadow">
+  <h1 class="mb-4 text-xl font-bold">Log in</h1>
+  <form method="post" class="space-y-4">{% csrf_token %}
+    {% if form.non_field_errors %}<p class="text-sm text-red-600">{{ form.non_field_errors|striptags }}</p>{% endif %}
+    {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium">{{ field.label }}</label>
+        <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}" id="{{ field.id_for_label }}"
+               class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+               {% if field.value %}value="{{ field.value|stringformat:'s' }}"{% endif %} autofocus required>
+        {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+    {% endfor %}
+    <button class="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Log in</button>
+  </form>
+  <p class="mt-4 text-center text-sm text-slate-500">
+    No account? <a href="{% url 'signup' %}" class="text-indigo-600 hover:underline">Sign up</a>
+  </p>
+</div>
+{% endblock %}

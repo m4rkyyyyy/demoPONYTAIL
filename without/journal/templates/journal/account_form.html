@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}New account &middot; TradePulse{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-lg">
+  <h1 class="text-xl font-semibold text-white">{{ title }}</h1>
+  <p class="mt-1 text-sm text-slate-500">
+    The opening balance seeds your equity curve, so the dashboard starts from
+    a realistic number instead of zero.
+  </p>
+
+  <form method="post" class="mt-6 space-y-5 rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
+    {% csrf_token %}
+    {% include "journal/_form_fields.html" %}
+
+    <div class="flex items-center gap-3 border-t border-slate-800 pt-5">
+      <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500">
+        {{ submit_label }}
+      </button>
+      <a href="{% url 'dashboard' %}"
+         class="rounded-lg border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

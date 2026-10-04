@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ form.instance.pk|default:"New trade" }} · TradePulse{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-2xl font-bold">{% if form.instance.pk %}Edit trade{% else %}New trade{% endif %}</h1>
+
+<form method="post" class="grid max-w-3xl gap-5 rounded-lg bg-white p-6 shadow sm:grid-cols-2">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="sm:col-span-2 rounded bg-red-50 p-3 text-sm text-red-700">{{ form.non_field_errors }}</div>{% endif %}
+
+  {% for field in form %}
+    <div class="{% if field.name == 'notes' %}sm:col-span-2{% endif %}">
+      <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+      {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+    </div>
+  {% endfor %}
+
+  <div class="flex items-center gap-3 sm:col-span-2">
+    <button class="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Save trade</button>
+    <a href="{% url 'trade_list' %}" class="text-sm text-slate-500 hover:underline">Cancel</a>
+  </div>
+</form>
+{% endblock %}

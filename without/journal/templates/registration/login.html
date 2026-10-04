@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load journal_extras %}
+{% block title %}Log in &middot; TradePulse{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-sm">
+  <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-8">
+    <div class="flex items-center gap-2 text-lg font-semibold text-white">
+      <i data-lucide="activity" class="h-5 w-5 text-indigo-400"></i> TradePulse
+    </div>
+    <p class="mt-1 text-sm text-slate-500">Log in to your trading journal.</p>
+
+    <form method="post" class="mt-6 space-y-4">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+
+      {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-300">{{ field.label }}</label>
+          {{ field|styled_field }}
+          {% for error in field.errors %}
+            <p class="mt-1 text-xs text-rose-400">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+
+      <button type="submit"
+              class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500">
+        Log in
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-xs text-slate-500">
+      No account yet?
+      <a href="{% url 'signup' %}" class="text-indigo-400 hover:text-indigo-300">Create one</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

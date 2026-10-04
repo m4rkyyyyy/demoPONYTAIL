@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load journal_extras %}
+{% block title %}Trades &middot; TradePulse{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-xl font-semibold text-white">Trade log</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {{ page_stats.closed_count }} closed on this page &middot;
+      net <span class="{{ page_stats.net_pnl|pnl_class }}">{{ page_stats.net_pnl|signed_money }}</span>
+      {% if is_filtered %}
+        &middot; <span class="text-indigo-400">filtered</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="flex items-center gap-2 text-sm">
+    <a href="{% url 'trade_import' %}"
+       class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:bg-slate-800">
+      <i data-lucide="upload" class="h-4 w-4"></i> Import
+    </a>
+    <a href="{% url 'trade_export' %}"
+       class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:bg-slate-800">
+      <i data-lucide="download" class="h-4 w-4"></i> Export CSV
+    </a>
+    <a href="{% url 'trade_create' %}"
+       class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-500">
+      <i data-lucide="plus" class="h-4 w-4"></i> New trade
+    </a>
+  </div>
+</div>
+
+{# ---------------- filters ---------------- #}
+<form method="get" class="mt-6 grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:grid-cols-2 lg:grid-cols-5">
+  <div>
+    <label for="id_symbol" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Symbol</label>
+    <input type="text" name="symbol" id="id_symbol" value="{{ active_filters.symbol }}"
+           list="symbol-options" placeholder="e.g. AAPL"
+           class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+    <datalist id="symbol-options">
+      {% for symbol in symbols %}<option value="{{ symbol }}"></option>{% endfor %}
+    </datalist>
+  </div>
+
+  <div>
+    <label for="id_status" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
+    <select name="status" id="id_status"
+            class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+      <option value="">All</option>
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if active_filters.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label for="id_direction" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Direction</label>
+    <select name="direction" id="id_direction"
+            class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+      <option value="">All</option>
+      {% for value, label in direction_choices %}
+        <option value="{{ value }}" {% if active_filters.direction == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label for="id_asset_class" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Asset class</label>
+    <select name="asset_class" id="id_asset_class"
+            class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+      <option value="">All</option>
+      {% for value, label in asset_class_choices %}
+        <option value="{{ value }}" {% if active_filters.asset_class == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="flex items-end gap-2">
+    <button type="submit"
+            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+      <i data-lucide="filter" class="h-4 w-4"></i> Apply
+    </button>
+    <a href="{% url 'trade_list' %}"
+       class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">Reset</a>
+  </div>
+</form>
+
+{# ---------------- table ---------------- #}
+<div class="mt-6 overflow-x-auto rounded-2xl border border-slate-800">
+  <table class="min-w-full divide-y divide-slate-800 text-sm">
+    <thead class="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3 text-left font-medium">Symbol</th>
+        <th class="px-4 py-3 text-left font-medium">Class</th>
+        <th class="px-4 py-3 text-left font-medium">Side</th>
+        <th class="px-4 py-3 text-left font-medium">Status</th>
+        <th class="px-4 py-3 text-right font-medium">Entry</th>
+        <th class="px-4 py-3 text-right font-medium">Exit</th>
+        <th class="px-4 py-3 text-right font-medium">Net P&amp;L</th>
+        <th class="px-4 py-3 text-right font-medium">R</th>
+        <th class="px-4 py-3 text-left font-medium">Tags</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-800/70 bg-slate-950/40">
+      {% for trade in trades %}
+        <tr class="hover:bg-slate-900/40">
+          <td class="px-4 py-3">
+            <div class="font-medium text-white">{{ trade.symbol }}</div>
+            <div class="text-xs text-slate-500">{{ trade.account.name }}</div>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ trade.get_asset_class_display }}</td>
+          <td class="px-4 py-3">
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium {% if trade.direction == 'LONG' %}bg-emerald-500/10 text-emerald-400{% else %}bg-rose-500/10 text-rose-400{% endif %}">{{ trade.direction }}</span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium
+              {% if trade.is_open %}bg-sky-500/10 text-sky-400
+              {% elif trade.result == 'WIN' %}bg-emerald-500/10 text-emerald-400
+              {% elif trade.result == 'LOSS' %}bg-rose-500/10 text-rose-400
+              {% else %}bg-slate-500/10 text-slate-400{% endif %}">
+              {{ trade.get_status_display }}{% if trade.is_closed %} &middot; {{ trade.result }}{% endif %}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right text-slate-300">{{ trade.entry_price|money:6 }}</td>
+          <td class="px-4 py-3 text-right text-slate-300">{{ trade.exit_price|money:6 }}</td>
+          <td class="px-4 py-3 text-right font-medium {{ trade.net_pnl|pnl_class }}">{{ trade.net_pnl|signed_money }}</td>
+          <td class="px-4 py-3 text-right {{ trade.r_multiple|pnl_class }}">{{ trade.r_multiple|r_multiple }}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-wrap gap-1">
+              {% for tag in trade.tags.all %}
+                <span class="rounded-md bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400">{{ tag.name }}</span>
+              {% empty %}
+                <span class="text-xs text-slate-600">&mdash;</span>
+              {% endfor %}
+            </div>
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'trade_update' trade.pk %}" class="text-xs text-indigo-400 hover:text-indigo-300">Edit</a>
+            <a href="{% url 'trade_delete' trade.pk %}" class="ml-3 text-xs text-rose-400 hover:text-rose-300">Delete</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="10" class="px-4 py-12 text-center text-slate-500">
+            {% if is_filtered %}
+              No trades match those filters.
+            {% else %}
+              No trades logged yet.
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ---------------- pagination ---------------- #}
+{% if page_obj.has_other_pages %}
+  <nav class="mt-6 flex items-center justify-between text-sm">
+    <span class="text-slate-500">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      &middot; {{ page_obj.paginator.count }} trade{{ page_obj.paginator.count|pluralize }}
+    </span>
+    <div class="flex items-center gap-2">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&amp;status={{ active_filters.status }}&amp;direction={{ active_filters.direction }}&amp;asset_class={{ active_filters.asset_class }}&amp;symbol={{ active_filters.symbol }}"
+           class="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:bg-slate-800">Previous</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&amp;status={{ active_filters.status }}&amp;direction={{ active_filters.direction }}&amp;asset_class={{ active_filters.asset_class }}&amp;symbol={{ active_filters.symbol }}"
+           class="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:bg-slate-800">Next</a>
+      {% endif %}
+    </div>
+  </nav>
+{% endif %}
+{% endblock %}

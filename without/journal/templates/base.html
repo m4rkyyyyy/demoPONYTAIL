@@ -1,0 +1,85 @@
+{% load journal_extras %}<!doctype html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TradePulse{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-slate-950 text-slate-200 antialiased">
+
+<header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
+    <a href="{% url 'dashboard' %}" class="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
+      <i data-lucide="activity" class="h-5 w-5 text-indigo-400"></i>
+      Trade<span class="text-indigo-400">Pulse</span>
+    </a>
+
+    {% if user.is_authenticated %}
+      <nav class="flex flex-wrap items-center gap-1 text-sm">
+        <a href="{% url 'dashboard' %}"
+           class="rounded-lg px-3 py-2 {% if request.resolver_match.url_name == 'dashboard' %}bg-slate-800 text-white{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-white{% endif %}">Dashboard</a>
+        <a href="{% url 'trade_list' %}"
+           class="rounded-lg px-3 py-2 {% if request.resolver_match.url_name == 'trade_list' %}bg-slate-800 text-white{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-white{% endif %}">Trades</a>
+        <a href="{% url 'trade_create' %}"
+           class="rounded-lg px-3 py-2 {% if request.resolver_match.url_name == 'trade_create' %}bg-slate-800 text-white{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-white{% endif %}">New trade</a>
+        <a href="{% url 'trade_import' %}"
+           class="rounded-lg px-3 py-2 {% if request.resolver_match.url_name == 'trade_import' %}bg-slate-800 text-white{% else %}text-slate-400 hover:bg-slate-800/60 hover:text-white{% endif %}">Import</a>
+        <a href="{% url 'trade_export' %}"
+           class="rounded-lg px-3 py-2 text-slate-400 hover:bg-slate-800/60 hover:text-white">Export</a>
+      </nav>
+
+      <div class="ml-auto flex items-center gap-3 text-sm">
+        <span class="hidden text-slate-400 sm:inline">{{ user.username }}</span>
+        <a href="{% url 'account_create' %}"
+           class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:bg-slate-800">
+          <i data-lucide="plus" class="h-4 w-4"></i> Account
+        </a>
+        {# Django 5 requires POST for logout, so this is a form, not a link. #}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700">
+            <i data-lucide="log-out" class="h-4 w-4"></i> Log out
+          </button>
+        </form>
+      </div>
+    {% else %}
+      <div class="ml-auto flex items-center gap-2 text-sm">
+        <a href="{% url 'login' %}" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">Log in</a>
+        <a href="{% url 'signup' %}" class="rounded-lg bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-500">Sign up</a>
+      </div>
+    {% endif %}
+  </div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 py-8">
+  {% if messages %}
+    <div class="mb-6 space-y-2">
+      {% for message in messages %}
+        <div class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm
+                    {% if message.tags == 'success' %}border-emerald-500/30 bg-emerald-500/10 text-emerald-300
+                    {% elif message.tags == 'error' %}border-rose-500/30 bg-rose-500/10 text-rose-300
+                    {% else %}border-slate-700 bg-slate-800/60 text-slate-300{% endif %}">
+          <i data-lucide="{% if message.tags == 'success' %}check-circle-2{% elif message.tags == 'error' %}alert-circle{% else %}info{% endif %}" class="h-4 w-4 shrink-0"></i>
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="mx-auto max-w-7xl px-4 pb-10 text-xs text-slate-600">
+  TradePulse &mdash; personal trading journal. Not investment advice.
+</footer>
+
+{% block extra_scripts %}{% endblock %}
+<script>
+  if (window.lucide) { lucide.createIcons(); }
+</script>
+</body>
+</html>
